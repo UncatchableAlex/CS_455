@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -19,8 +21,17 @@ public final class FDUtil {
   public static FDSet trivial(final FDSet fdset) {
     // TODO: Obtain the power set of each FD's left-hand attributes. For each
     // element in the power set, create a new FD and add it to the a new FDSet.
-
-    return null;
+    FDSet trivialFdSet = new FDSet();
+    for (FD fd : fdset) {
+      Set<String> leftDeps = fd.getLeft();
+      for (Set<String> rightDep : powerSet(leftDeps)) {
+        if (!rightDep.isEmpty()) {
+          FD trivialFd = new FD(leftDeps, rightDep);
+          trivialFdSet.add(trivialFd);
+        }
+      }
+    }
+    return trivialFdSet;
   }
 
   /**
@@ -33,8 +44,16 @@ public final class FDUtil {
   public static FDSet augment(final FDSet fdset, final Set<String> attrs) {
     // TODO: Copy each FD in the given set and then union both sides with the given
     // set of attributes, and add this augmented FD to a new FDSet.
-
-    return null;
+    FDSet augmentFdSet = new FDSet();
+    for (FD fd : fdset) {
+      List<String> fdLeftCopy = new ArrayList<>(fd.getLeft());
+      List<String> fdRightCopy = new ArrayList<>(fd.getRight());
+      fdLeftCopy.addAll(attrs);
+      fdRightCopy.addAll(attrs);
+      FD augFd = new FD(fdLeftCopy, fdRightCopy);
+      augmentFdSet.add(augFd);
+    }
+    return augmentFdSet;
   }
 
   /**
@@ -47,8 +66,29 @@ public final class FDUtil {
     // TODO: Examine each pair of FDs in the given set. If the transitive property
     // holds on the pair of FDs, then generate the new FD and add it to a new FDSet.
     // Repeat until no new transitive FDs are found.
+    /*do {
+      FDSet curr = new FDSet();
+      for (FD fd : last) {
 
-    return null;
+      }
+    }*/
+    FDSet fdSetCopy = new FDSet(fdset);
+    FDSet transitiveSet = new FDSet(fdset);
+    int startSize;
+    do {
+      startSize = transitiveSet.size();
+      for (FD fd1 : fdSetCopy) {
+        for (FD fd2 : fdSetCopy) {
+          if (!fd1.equals(fd2) && fd1.getRight().equals(fd2.getLeft())) {
+            FD transitiveFd = new FD(fd1.getLeft(), fd2.getRight());
+            transitiveSet.add(transitiveFd);
+          }
+        }
+      }
+      fdSetCopy.addAll(transitiveSet);
+    } while(transitiveSet.size() != startSize);
+    fdSetCopy.getSet().removeAll(fdset.getSet());
+    return fdSetCopy;
   }
 
   /**
@@ -59,12 +99,28 @@ public final class FDUtil {
    */
   public static FDSet fdSetClosure(final FDSet fdset) {
     // TODO: Use the FDSet copy constructor to deep copy the given FDSet
-
+    FDSet fdSetCopy = new FDSet(fdset);
+    FDSet temp = new FDSet();
+    Set<String> attributes = new HashSet<>();
+    for (FD fd : fdSetCopy) {
+      attributes.addAll(fd.getLeft());
+      attributes.addAll(fd.getRight());
+    }
+    Set<Set<String>> attrPowerSet = powerSet(attributes);
     // TODO: Generate new FDs by applying Trivial and Augmentation Rules, followed
     // by Transitivity Rule, and add new FDs to the result.
     // Repeat until no further changes are detected.
+    int startSize;
+    do {
+      startSize = fdSetCopy.size();
+      fdSetCopy.addAll(trivial(fdSetCopy));
+      for (Set<String> attr : attrPowerSet) {
+        fdSetCopy.addAll(augment(fdSetCopy, attr));
+      }
+      fdSetCopy.addAll(transitive(fdSetCopy));
+    } while (fdSetCopy.size() != startSize);
 
-    return null;
+    return fdSetCopy;
   }
 
   /**
