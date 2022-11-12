@@ -1,13 +1,12 @@
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * This class provides static methods for performing normalization
  * 
- * @author <YOUR NAME>
- * @version <DATE>
+ * @author Alex
+ * @version 2022-11-11
  */
 public class Normalizer {
 
@@ -19,36 +18,33 @@ public class Normalizer {
    * @return a set of relations (as attribute sets) that are in BCNF
    */
   public static Set<Set<String>> BCNFDecompose(Set<String> rel, FDSet fdset) {
-    // TODO - First test if the given relation is already in BCNF with respect to
-    // the provided FD set.
+      // print out some helpful info for Professor Chiu!
       System.out.println("Current schema = " + rel.toString());
+
+      // check to see if we have hit our base case (schema is already in bcnf)
       if (isBCNF(rel, fdset)){
           System.out.println("Current schema is in BCNF\n\n");
           return Collections.singleton(rel);
       }
-
-
-    // TODO - Identify a nontrivial FD that violates BCNF. Split the relation's
+    // Identify a nontrivial FD that violates BCNF. Split the relation's
     // attributes using that FD, as seen in class.
+
+      // find all superkeys
       Set<Set<String>> superKeys = findSuperkeys(rel, fdset);
       System.out.println("Current schema's superkeys = " + superKeys);
+      // find a fd that violates bcnf
       FD violatingFD = fdset
               .getSet()
               .stream()
               .filter(fd -> !fd.getLeft().containsAll(fd.getRight()) && !superKeys.contains(fd.getLeft()))
               .findFirst()
+              //the following error should only throw if something has gone horribly wrong.
               .orElseThrow(() -> new RuntimeException("BCNF check gave false neg. No violating dependencies found."));
 
-      System.out.println("Splitting on " + violatingFD);
+      System.out.println("\uD83E\uDE93".repeat(5) + " Splitting on " + violatingFD + "\uD83E\uDE93".repeat(5));
 
-    // TODO - Redistribute the FDs in the closure of fdset to the two new
-    // relations (R_Left and R_Right) as follows:
-    //
-    // Iterate through closure of the given set of FDs, then union all attributes
-    // appearing in the FD, and test if the union is a subset of the R_Left (or
-    // R_Right) relation. If so, then the FD gets added to the R_Left's (or R_Right's) FD
-    // set. If the union is not a subset of either new relation, then the FD is
-    // discarded
+    // Redistribute the FDs in the closure of fdset to the two new
+    // relations (r1 and r2)
       Set<String> r1 = rel
               .stream()
               .filter(s -> violatingFD.getLeft().contains(s) || violatingFD.getRight().contains(s))
@@ -59,10 +55,17 @@ public class Normalizer {
               .filter(s -> violatingFD.getLeft().contains(s) || !violatingFD.getRight().contains(s))
               .collect(Collectors.toSet());
 
+
+      // Iterate through closure of the given set of FDs, then union all attributes
+      // appearing in the FD, and test if the union is a subset of the r1 (or
+      // r2) relation. If so, then the FD gets added to the r1's (or r2's) FD
+      // set. If the union is not a subset of either new relation, then the FD is
+      // discarded
       FDSet fplus = FDUtil.fdSetClosure(fdset);
       FDSet f1 = new FDSet();
       FDSet f2 = new FDSet();
       for (FD fd : fplus) {
+          // get all attributes in both sides of fd:
           Set<String> attrs = Stream.concat(fd.getLeft().stream(), fd.getRight().stream()).collect(Collectors.toSet());
           if (r1.containsAll(attrs)) {
               f1.add(fd);
@@ -73,6 +76,7 @@ public class Normalizer {
       }
       System.out.println("Left schema = " + r1 + "\nLeft schema's superkeys = " + findSuperkeys(r1, f1));
       System.out.println("Right schema = " + r2 + "\nRight schema's superkeys = " + findSuperkeys(r2, f2) + "\n\n");
+      // recurse on each subproblem:
       return Stream.concat(BCNFDecompose(r1, f1).stream(), BCNFDecompose(r2, f2).stream()).collect(Collectors.toSet());
   }
 
@@ -86,6 +90,7 @@ public class Normalizer {
    */
   public static boolean isBCNF(Set<String> rel, FDSet fdset) {
     Set<Set<String>> superKeys = findSuperkeys(rel, fdset);
+    // Test the BCNF criteria against every FD in fdset:
     for (FD fd : fdset.getSet()) {
         if (!fd.getLeft().containsAll(fd.getRight()) && !superKeys.contains(fd.getLeft())) {
             return false;
@@ -102,45 +107,45 @@ public class Normalizer {
    * @return a set of super keys
    */
   public static Set<Set<String>> findSuperkeys(Set<String> rel, FDSet fdset) {
-    // TODO - sanity check: are all the attributes in the FD set even in the relation? Throw an IllegalArgumentException if not.
+      // First check to make sure that all attributes contained in the FDs are valid attributions in the relation.
+      // Get a list of all attributes in the FDSet:
       Set<String> attrs = fdset
               .getSet()
               .stream()
               .flatMap(fd -> Stream.concat(fd.getLeft().stream(), fd.getRight().stream()))
               .collect(Collectors.toSet());
 
+      // throw an exception if the relation does not contain every attribute in the FDs:
       if (!rel.containsAll(attrs)) {
         throw new IllegalArgumentException("Attributes in FDSet not present in relation.");
       }
-      FD[] lonelyAttrs = rel.stream()
-              .filter(Predicate.not(attrs::contains))
-              .map(Collections::singleton)
-              .map(a -> new FD(a, a))
-              .toList()
-              .toArray(new FD[0]);
-      FD[] fdArr = fdset.getSet().toArray(new FD[0]);
-      FDSet fd_complete = new FDSet(fdArr);
-      fd_complete.addAll(new FDSet(lonelyAttrs));
-      Set<Set<String>> superKeys = new HashSet<>();
-      FDSet fdClos = FDUtil.fdSetClosure(fd_complete);
-      for (Set<String> relSubSet : FDUtil.powerSet(rel)) {
-        boolean canDetermineAllAttrs = fdClos
-                .getSet()
-                .stream()
-                .filter(fd -> relSubSet.containsAll(fd.getLeft()))
-                .flatMap(fd -> Stream.concat(fd.getLeft().stream(), fd.getRight().stream()))
-                .collect(Collectors.toSet())
-                .equals(rel);
 
-        if (canDetermineAllAttrs) {
+      // make an empty set to store every superkey that we find:
+      Set<Set<String>> superKeys = new HashSet<>();
+      // this map will hold the closure of each subset of rel under fdset
+      Set<String> canDetermine = new HashSet<>();
+      // for every subset of attributes in our relation
+
+      for (Set<String> relSubSet : FDUtil.powerSet(rel)) {
+          int startSize;
+          // reset the canDetermine map
+          canDetermine.clear();
+          canDetermine.addAll(relSubSet);
+          // do the a+ closure algorithm
+          do {
+              startSize = canDetermine.size();
+              for (FD fd : fdset) {
+                  if (canDetermine.containsAll(fd.getLeft())) {
+                      canDetermine.addAll(fd.getRight());
+                  }
+              }
+          } while (startSize != canDetermine.size());
+
+        // add another superkey if relSubSet can determine all attributes in rel under fdset
+        if (canDetermine.equals(rel)) {
           superKeys.add(relSubSet);
         }
       }
       return superKeys;
-
-
-    // TODO - iterate through each subset of the relation's attributes, and test
-    // the attribute closure of each subset
   }
-
 }

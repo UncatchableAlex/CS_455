@@ -7,8 +7,8 @@ import java.util.HashSet;
  * This utility class is not meant to be instantitated, and just provides some
  * useful methods on FD sets.
  * 
- * @author <<YOUR NAME>>
- * @version <<DATE>>
+ * @author Alex
+ * @version 2022-11-11
  */
 public final class FDUtil {
 
@@ -19,8 +19,6 @@ public final class FDUtil {
    * @return a set of trivial FDs with respect to the given FDSet
    */
   public static FDSet trivial(final FDSet fdset) {
-    // TODO: Obtain the power set of each FD's left-hand attributes. For each
-    // element in the power set, create a new FD and add it to the a new FDSet.
     FDSet trivialFdSet = new FDSet();
     for (FD fd : fdset) {
       Set<String> leftDeps = fd.getLeft();
@@ -42,8 +40,6 @@ public final class FDUtil {
    * @return a set of augmented FDs
    */
   public static FDSet augment(final FDSet fdset, final Set<String> attrs) {
-    // TODO: Copy each FD in the given set and then union both sides with the given
-    // set of attributes, and add this augmented FD to a new FDSet.
     FDSet augmentFdSet = new FDSet();
     for (FD fd : fdset) {
       List<String> fdLeftCopy = new ArrayList<>(fd.getLeft());
@@ -63,15 +59,6 @@ public final class FDUtil {
    * @return all transitive FDs with respect to the input FD set
    */
   public static FDSet transitive(final FDSet fdset) {
-    // TODO: Examine each pair of FDs in the given set. If the transitive property
-    // holds on the pair of FDs, then generate the new FD and add it to a new FDSet.
-    // Repeat until no new transitive FDs are found.
-    /*do {
-      FDSet curr = new FDSet();
-      for (FD fd : last) {
-
-      }
-    }*/
     FDSet fdSetCopy = new FDSet(fdset);
     FDSet transitiveSet = new FDSet(fdset);
     int startSize;
@@ -98,7 +85,6 @@ public final class FDUtil {
    * @return the closure of the input FD Set
    */
   public static FDSet fdSetClosure(final FDSet fdset) {
-    // TODO: Use the FDSet copy constructor to deep copy the given FDSet
     FDSet fdSetCopy = new FDSet(fdset);
     FDSet temp = new FDSet();
     Set<String> attributes = new HashSet<>();
@@ -107,9 +93,6 @@ public final class FDUtil {
       attributes.addAll(fd.getRight());
     }
     Set<Set<String>> attrPowerSet = powerSet(attributes);
-    // TODO: Generate new FDs by applying Trivial and Augmentation Rules, followed
-    // by Transitivity Rule, and add new FDs to the result.
-    // Repeat until no further changes are detected.
     int startSize;
     do {
       startSize = fdSetCopy.size();
